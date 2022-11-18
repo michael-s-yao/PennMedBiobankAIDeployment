@@ -17,6 +17,7 @@ from pathlib import Path
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from scipy.stats import ks_2samp
 from typing import Optional, Sequence, Tuple, Union
 
 
@@ -211,6 +212,17 @@ class IDPExplorer:
                     bins=50,
                     weights=np.ones_like(idp_embedding[positive]) / num_pos
                 )
+                p_value = ks_2samp(
+                    idp_embedding[positive], idp_embedding[negative]
+                ).pvalue
+                plt.annotate(
+                    self.p_value_str(p_value),
+                    xy=(0.025, 0.95),
+                    xycoords="axes fraction",
+                    color="black",
+                    horizontalalignment="left",
+                    verticalalignment="top"
+                )
                 if dim_reduction_method.upper() == "TSNE":
                     plt.xlabel("IDP t-SNE Dimension 1")
                 else:
@@ -259,6 +271,21 @@ class IDPExplorer:
             "#89969B"
         ]
 
+    def p_value_str(self, p: float) -> str:
+        """
+        Converts a p value into an string annotation for plots.
+        Input:
+            p: input p value (assumed to be less than 1).
+        Returns:
+            Formatted p value string.
+        """
+        if p > 1 or p <= 0:
+            raise ValueError("p values should be between 0 and 1, got {p}.")
+        decimal_power = 0
+        while p < 1:
+            p = p * 10
+            decimal_power -= 1
+        return fr"$p = {p:.3f} \times 10^{{{decimal_power}}}$"
 
 def build_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="PMBB IDP Explorer")
