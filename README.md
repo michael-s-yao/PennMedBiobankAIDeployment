@@ -1,4 +1,4 @@
-# Deployment Strategies for Machine Learning Algorithms in Patient Healthcare Domains: An Imaging Perspective 
+# Deployment Strategies for Machine Learning Algorithms in Patient Healthcare Domains: An Imaging Perspective
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 [![CONTACT](https://img.shields.io/badge/contact-jisoo.chae%40pennmedicine.upenn.edu-blue)](mailto:jisoo.chae@pennmedicine.upenn.edu)
