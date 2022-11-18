@@ -1,3 +1,12 @@
+"""
+IDP analysis using PMBB data and PCA/t-SNE.
+
+Author(s):
+    Allison Chae
+    Michael S Yao
+
+Licensed under the MIT License. Copyright 2022 University of Pennsylvania.
+"""
 import argparse
 import matplotlib
 import matplotlib.pyplot as plt
