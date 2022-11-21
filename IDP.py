@@ -279,6 +279,8 @@ class IDPExplorer:
         Returns:
             Formatted p value string.
         """
+        if p >= 0.01:
+            return fr"$p = {p:.3f}$"
         if p > 1 or p <= 0:
             raise ValueError("p values should be between 0 and 1, got {p}.")
         decimal_power = 0
