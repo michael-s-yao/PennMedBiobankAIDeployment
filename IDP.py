@@ -289,6 +289,7 @@ class IDPExplorer:
             decimal_power -= 1
         return fr"$p = {p:.3f} \times 10^{{{decimal_power}}}$"
 
+
 def build_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="PMBB IDP Explorer")
 

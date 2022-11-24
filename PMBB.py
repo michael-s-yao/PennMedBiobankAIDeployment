@@ -156,7 +156,8 @@ class PMBBImagingExplorer:
         savepath: Optional[Union[Path, str]] = None,
         do_plot: bool = True,
         max_modalities: int = 10,
-        max_repeats: int = 10
+        max_repeats: int = 10,
+        label: Optional[str] = None
     ) -> Dict[str, Dict[int, int]]:
         """
         Calculates and plots the number of repeat imaging studies on a per
@@ -168,6 +169,7 @@ class PMBBImagingExplorer:
                 If -1, then all modalities are plotted.
             max_repeats: maximum number of repeat imaging studies to plot.
                 Default 10.
+            label: optional label for the plot. Default None.
         Returns:
             A dictionary mapping imaging modality to another dictionary mapping
             number of repeats to frequency.
@@ -221,6 +223,14 @@ class PMBBImagingExplorer:
             plt.legend(loc="upper right")
             plt.xlabel("Number of Imaging Studies")
             plt.ylabel("1 - CDF")
+            if label is not None and len(label) > 0:
+                plt.annotate(
+                    label,
+                    xy=(0.0, 1.025),
+                    xycoords="axes fraction",
+                    fontsize=24,
+                    weight="bold"
+                )
             if savepath is None:
                 plt.show()
             else:
@@ -241,7 +251,8 @@ class PMBBImagingExplorer:
         self,
         savepath: Optional[Union[Path, str]] = None,
         do_plot: bool = True,
-        max_modalities: int = -1
+        max_modalities: int = -1,
+        label: Optional[str] = None
     ) -> Dict[str, int]:
         """
         Calculates and plots the total volume of imaging studies stratified
@@ -251,6 +262,7 @@ class PMBBImagingExplorer:
             do_plot: whether or not to plot the data. Default True.
             max_modalities: maximum number of modalities to plot. Default 10.
                 If -1, then all modalities are plotted.
+            label: optional label for the plot. Default None.
         Returns:
             A dictionary mapping imaging modality to volume. Note that if
             `max_modalities` is specified, then the number of returned key-
@@ -290,9 +302,18 @@ class PMBBImagingExplorer:
             left_ax = plt.gca()
             right_ax = left_ax.twinx()
             mn, mx = left_ax.get_ylim()
-            right_ax.set_ylim(mn * len(self.patients), mx * len(self.patients))
-            right_ax.set_ylabel("Total Number of PMBB Studies")
-            right_ax.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+            right_ax.set_ylim(
+                mn * len(self.patients) / 1e3, mx * len(self.patients) / 1e3
+            )
+            right_ax.set_ylabel("Total Number of PMBB Studies (Thousands)")
+            if label is not None and len(label) > 0:
+                plt.annotate(
+                    label,
+                    xy=(0.0, 1.025),
+                    xycoords="axes fraction",
+                    fontsize=24,
+                    weight="bold"
+                )
             if savepath is None:
                 plt.show()
             else:
@@ -382,6 +403,7 @@ class PMBBImagingExplorer:
         do_plot: bool = True,
         max_modalities: int = 10,
         max_dt: int = 365,
+        label: Optional[str] = None
     ) -> Dict[str, Sequence[int]]:
         """
         Calculates and plots the distribution of delta times between
@@ -393,6 +415,7 @@ class PMBBImagingExplorer:
                 If -1, then all modalities are plotted.
             max_dt: maximum range of delta times to plot. Default 365 days.
                 If -1, then the entire range is plotted.
+            label: optional label for the plot. Default None.
         Returns:
             A dictionary mapping imaging modality to all the delta times (in
             days) between imaging modalities by patient. Note that if
@@ -446,6 +469,14 @@ class PMBBImagingExplorer:
             )
             plt.ylabel("Frequency")
             plt.yscale("log")
+            if label is not None and len(label) > 0:
+                plt.annotate(
+                    label,
+                    xy=(0.0, 1.025),
+                    xycoords="axes fraction",
+                    fontsize=24,
+                    weight="bold"
+                )
             if savepath is None:
                 plt.show()
             else:
@@ -477,7 +508,8 @@ class PMBBImagingExplorer:
         max_modalities: int = 10,
         min_year: int = 1995,
         max_year: int = 2015,
-        all_modalities: bool = False
+        all_modalities: bool = False,
+        label: Optional[str] = None
     ) -> Dict[str, Dict[int, int]]:
         """
         Calculates and plots the number of imaging studies per year by
@@ -494,6 +526,7 @@ class PMBBImagingExplorer:
             all_modalities: whether to plot all imaging studies by year,
                 irregardless of modality. If True, the `max_modalities`
                 parameter is ignored.
+            label: optional label for the plot. Default None.
         Returns:
             A dictionary mapping imaging modality to another dictionary
             mapping year to total number of imaging studies of that modality
@@ -575,12 +608,20 @@ class PMBBImagingExplorer:
                 years = [y for y in years if y >= min_year]
                 if max_year >= min_year:
                     years = [y for y in years if y <= max_year]
-                enrollment = [year_to_volume[y] for y in years]
+                enrollment = [year_to_volume[y] / 1_000 for y in years]
                 plt.plot(years, enrollment, label=mod, color=co, linewidth=3)
             plt.xlabel("Year")
-            plt.ylabel("Number of Imaging Studies")
-            plt.gca().ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+            plt.xticks(np.arange(start=min_year, stop=(max_year + 1), step=5))
+            plt.ylabel("Thousands of Imaging Studies")
             plt.legend(loc="upper left")
+            if label is not None and len(label) > 0:
+                plt.annotate(
+                    label,
+                    xy=(0.0, 1.025),
+                    xycoords="axes fraction",
+                    fontsize=24,
+                    weight="bold"
+                )
             if savepath is None:
                 plt.show()
             else:
@@ -650,13 +691,22 @@ def main():
 
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
-    explorer.imaging_by_year(
-        savepath=os.path.join(args.output_dir, "imaging_by_year.png"),
-        max_modalities=10
-    )
     explorer.volume_by_modality(
         savepath=os.path.join(args.output_dir, "volume_by_modality.png"),
-        max_modalities=10
+        max_modalities=10,
+        label="(a)"
+    )
+    explorer.imaging_by_year(
+        savepath=os.path.join(args.output_dir, "imaging_by_year.png"),
+        max_modalities=10,
+        label="(b)"
+    )
+    explorer.repeat_studies_by_modality(
+        savepath=os.path.join(
+            args.output_dir, "repeat_studies_by_modality.png"
+        ),
+        max_modalities=10,
+        label="(c)"
     )
     explorer.delta_time_dist_by_modality(
         savepath=os.path.join(
@@ -664,12 +714,7 @@ def main():
         ),
         max_modalities=4,
         max_dt=1000,
-    )
-    explorer.repeat_studies_by_modality(
-        savepath=os.path.join(
-            args.output_dir, "repeat_studies_by_modality.png"
-        ),
-        max_modalities=10
+        label="(d)"
     )
 
 
