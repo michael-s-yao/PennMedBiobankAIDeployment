@@ -64,13 +64,13 @@ class IDPExplorer:
             "OTHER": [760, 1000]
         }
         self.icds_references = {
-            "Diabetes": [250, 251],
-            "NAFLD": [571, 572],
             "Obesity": [278, 279],
             "Obstructive Sleep Apnea": [327.23, 328.24],
             "Hypertension": [401, 402],
-            "Chronic Kidney Disease": [585, 586],
-            "Genitourinary Diseases": [580, 680]
+            "NAFLD": [571, 572],
+            "Diabetes": [250, 251],
+            "Genitourinary Diseases": [580, 680],
+            "Chronic Kidney Disease": [585, 586]
         }
         self.seed = seed
         self.rng = np.random.RandomState(seed)
@@ -123,8 +123,23 @@ class IDPExplorer:
         self,
         savedir: Optional[Union[Path, str]] = None,
         n_components: int = 1,
-        dim_reduction_method: str = "PCA"
+        dim_reduction_method: str = "PCA",
+        use_labels: bool = True,
+        verbose: bool = True
     ) -> None:
+        """
+        Plots IDP principal component(s) as a function of different diagnoses.
+        Input:
+            savedir: directory to save plots to. Default no plots saved.
+            n_components: number of principal components to plot. One of
+                [1, 2]. Default 1.
+            dim_reduction_method: dimensionality reduction method. One of
+                [`PCA`, `TSNE`]. Default `PCA`.
+            use_labels: whether to plot labels using (a), (b), (c), etc.
+            verbose: flag for verbose outputs.
+        Returns:
+            None.
+        """
         idp_X = self.data.drop([self._id], axis=1).to_numpy()
         idp_Z = StandardScaler().fit_transform(idp_X)
         n_components = min(max(n_components, 1), 2)
@@ -144,6 +159,7 @@ class IDPExplorer:
                 f"Unrecognized dim reduction method {dim_reduction_method}"
             )
 
+        label = 97  # Unicode for `a`.
         for (diagnosis, (icd_low, icd_high)), co in zip(
             self.icds_references.items(), self.colors
         ):
@@ -194,6 +210,14 @@ class IDPExplorer:
             elif n_components == 1:
                 idp_embedding = np.squeeze(idp_embedding)
                 num_pos, num_neg = len(positive[0]), len(negative[0])
+                if verbose:
+                    print(
+                        diagnosis + ":",
+                        num_pos,
+                        "[positive] /",
+                        num_neg,
+                        "[negative]"
+                    )
                 plt.hist(
                     idp_embedding[negative],
                     color="#8f8f8f",
@@ -229,6 +253,16 @@ class IDPExplorer:
                     plt.xlabel("IDP PCA Dimension 1")
                 plt.ylabel("Frequency")
                 plt.legend(loc="upper right")
+
+            if use_labels:
+                plt.annotate(
+                    "(" + chr(label) + ")",
+                    xy=(0.0, 1.05),
+                    xycoords="axes fraction",
+                    fontsize=24,
+                    weight="bold"
+                )
+                label += 1
             if savedir is None or len(savedir) == 0:
                 plt.show()
             else:
@@ -254,13 +288,13 @@ class IDPExplorer:
         matplotlib.rcParams['font.family'] = "Arial"
         matplotlib.rcParams.update({"font.size": 20})
         self.colors = [
-            "#1A476F",
-            "#90353B",
             "#55752F",
             "#E37E00",
             "#6E8E84",
-            "#C10534",
+            "#90353B",
+            "#1A476F",
             "#938DD2",
+            "#C10534",
             "#CAC27E",
             "#A0522D",
             "#7B92A8",
@@ -317,7 +351,7 @@ def build_args() -> argparse.Namespace:
         "--savedir",
         type=str,
         default=None,
-        help="Directory to save plots to. Default plots are not saved"
+        help="Directory to save plots to. Default plots are not saved."
     )
     parser.add_argument(
         "--dim_reduction_method",
@@ -329,7 +363,7 @@ def build_args() -> argparse.Namespace:
     parser.add_argument(
         "--n_components",
         type=int,
-        default=2,
+        default=1,
         choices=[1, 2],
         help="Number of principal components to plot. One of [`1`, `2`]."
     )
@@ -356,7 +390,9 @@ def main():
     explorer.visualize(
         savedir=args.savedir,
         n_components=args.n_components,
-        dim_reduction_method=args.dim_reduction_method
+        dim_reduction_method=args.dim_reduction_method,
+        use_labels=True,
+        verbose=True
     )
 
 
