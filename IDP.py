@@ -368,6 +368,11 @@ def build_args() -> argparse.Namespace:
         help="Number of principal components to plot. One of [`1`, `2`]."
     )
     parser.add_argument(
+        "--add_sublabels",
+        action="store_true",
+        help="Whether to add figure sublabeling, i.e. (a). Default no labels."
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=42,
@@ -391,7 +396,7 @@ def main():
         savedir=args.savedir,
         n_components=args.n_components,
         dim_reduction_method=args.dim_reduction_method,
-        use_labels=True,
+        use_labels=args.add_sublabels,
         verbose=True
     )
 

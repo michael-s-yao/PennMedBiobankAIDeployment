@@ -157,7 +157,8 @@ class PMBBImagingExplorer:
         do_plot: bool = True,
         max_modalities: int = 10,
         max_repeats: int = 10,
-        label: Optional[str] = None
+        label: Optional[str] = None,
+        anonymize: bool = False
     ) -> Dict[str, Dict[int, int]]:
         """
         Calculates and plots the number of repeat imaging studies on a per
@@ -170,6 +171,7 @@ class PMBBImagingExplorer:
             max_repeats: maximum number of repeat imaging studies to plot.
                 Default 10.
             label: optional label for the plot. Default None.
+            anonymize: whether to anonymize the plot axis title. Default False.
         Returns:
             A dictionary mapping imaging modality to another dictionary mapping
             number of repeats to frequency.
@@ -252,7 +254,8 @@ class PMBBImagingExplorer:
         savepath: Optional[Union[Path, str]] = None,
         do_plot: bool = True,
         max_modalities: int = -1,
-        label: Optional[str] = None
+        label: Optional[str] = None,
+        anonymize: bool = False
     ) -> Dict[str, int]:
         """
         Calculates and plots the total volume of imaging studies stratified
@@ -263,6 +266,7 @@ class PMBBImagingExplorer:
             max_modalities: maximum number of modalities to plot. Default 10.
                 If -1, then all modalities are plotted.
             label: optional label for the plot. Default None.
+            anonymize: whether to anonymize the plot axis title. Default False.
         Returns:
             A dictionary mapping imaging modality to volume. Note that if
             `max_modalities` is specified, then the number of returned key-
@@ -298,14 +302,20 @@ class PMBBImagingExplorer:
                 linewidth=3
             )
             plt.xlabel("Imaging Study")
-            plt.ylabel("Number of Studies per PMBB Capita")
+            if anonymize:
+                plt.ylabel("Number of Studies per AIBB Capita")
+            else:
+                plt.ylabel("Number of Studies per PMBB Capita")
             left_ax = plt.gca()
             right_ax = left_ax.twinx()
             mn, mx = left_ax.get_ylim()
             right_ax.set_ylim(
                 mn * len(self.patients) / 1e3, mx * len(self.patients) / 1e3
             )
-            right_ax.set_ylabel("Total Number of PMBB Studies (Thousands)")
+            if anonymize:
+                right_ax.set_ylabel("Total Number of AIBB Studies (Thousands)")
+            else:
+                right_ax.set_ylabel("Total Number of PMBB Studies (Thousands)")
             if label is not None and len(label) > 0:
                 plt.annotate(
                     label,
@@ -403,7 +413,8 @@ class PMBBImagingExplorer:
         do_plot: bool = True,
         max_modalities: int = 10,
         max_dt: int = 365,
-        label: Optional[str] = None
+        label: Optional[str] = None,
+        anonymize: bool = False
     ) -> Dict[str, Sequence[int]]:
         """
         Calculates and plots the distribution of delta times between
@@ -416,6 +427,7 @@ class PMBBImagingExplorer:
             max_dt: maximum range of delta times to plot. Default 365 days.
                 If -1, then the entire range is plotted.
             label: optional label for the plot. Default None.
+            anonymize: whether to anonymize the plot axis title. Default False.
         Returns:
             A dictionary mapping imaging modality to all the delta times (in
             days) between imaging modalities by patient. Note that if
@@ -509,7 +521,8 @@ class PMBBImagingExplorer:
         min_year: int = 1995,
         max_year: int = 2015,
         all_modalities: bool = False,
-        label: Optional[str] = None
+        label: Optional[str] = None,
+        anonymize: bool = False
     ) -> Dict[str, Dict[int, int]]:
         """
         Calculates and plots the number of imaging studies per year by
@@ -527,6 +540,7 @@ class PMBBImagingExplorer:
                 irregardless of modality. If True, the `max_modalities`
                 parameter is ignored.
             label: optional label for the plot. Default None.
+            anonymize: whether to anonymize the plot axis title. Default False.
         Returns:
             A dictionary mapping imaging modality to another dictionary
             mapping year to total number of imaging studies of that modality
@@ -549,7 +563,10 @@ class PMBBImagingExplorer:
                 ]
                 plt.plot(plot_years, plot_volumes, color="black", linewidth=3)
                 plt.xlabel("Year")
-                plt.ylabel("Number of Imaging Studies per PMBB Capita")
+                if anonymize:
+                    plt.ylabel("Number of Imaging Studies per AIBB Capita")
+                else:
+                    plt.ylabel("Number of Imaging Studies per PMBB Capita")
                 if savepath is None:
                     plt.show()
                 else:
@@ -669,6 +686,16 @@ def build_args() -> argparse.Namespace:
         help="Font size for plotting. Default 18."
     )
     parser.add_argument(
+        "--anonymize",
+        action="store_true",
+        help="Whether to anonymize the figures for double blind review."
+    )
+    parser.add_argument(
+        "--add_sublabels",
+        action="store_true",
+        help="Whether to add figure sublabeling, i.e. (a). Default no labels."
+    )
+    parser.add_argument(
         "--use_sans_serif",
         action="store_true",
         help="Whether to use Sans Serif font for plotting. Default False."
@@ -694,19 +721,22 @@ def main():
     explorer.volume_by_modality(
         savepath=os.path.join(args.output_dir, "volume_by_modality.png"),
         max_modalities=10,
-        label="(a)"
+        label=("(a)" if args.add_sublabels else None),
+        anonymize=args.anonymize
     )
     explorer.imaging_by_year(
         savepath=os.path.join(args.output_dir, "imaging_by_year.png"),
         max_modalities=10,
-        label="(b)"
+        label=("(b)" if args.add_sublabels else None),
+        anonymize=args.anonymize
     )
     explorer.repeat_studies_by_modality(
         savepath=os.path.join(
             args.output_dir, "repeat_studies_by_modality.png"
         ),
         max_modalities=10,
-        label="(c)"
+        label=("(c)" if args.add_sublabels else None),
+        anonymize=args.anonymize
     )
     explorer.delta_time_dist_by_modality(
         savepath=os.path.join(
@@ -714,7 +744,8 @@ def main():
         ),
         max_modalities=4,
         max_dt=1000,
-        label="(d)"
+        label=("(d)" if args.add_sublabels else None),
+        anonymize=args.anonymize
     )
 
 
