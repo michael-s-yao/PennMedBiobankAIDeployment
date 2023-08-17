@@ -7,10 +7,13 @@ Author(s):
 
 Licensed under the MIT License. Copyright 2022 University of Pennsylvania.
 """
+from io import BytesIO
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pathlib import Path
+from PIL import Image
 from typing import Tuple, Union
 
 
@@ -31,13 +34,16 @@ def gaussian(
 
 
 def figure(
-    figsize: Tuple[int, int] = (10, 6), savepath: Union[Path, str] = None
+    figsize: Tuple[int, int] = (10, 5),
+    savepath: Union[Path, str] = None,
+    transparent: bool = False
 ) -> None:
     """
     Function to reproduce the distribution shift figure in the manuscript.
     Input:
-        figsize: figure size. Default 10 by 6.
+        figsize: figure size. Default 10 by 5.
         savepath: optional path to save the figure plot. Default not saved.
+        transparent: whether to save transparent figures. Default False.
     Returns:
         None.
     """
@@ -64,11 +70,23 @@ def figure(
     plt.axis("off")
     if savepath is None:
         plt.show()
+    elif savepath.endswith(".tif") or savepath.endswith(".tiff"):
+        tmp = BytesIO()
+        plt.savefig(
+            tmp,
+            dpi=600,
+            transparent=transparent,
+            bbox_inches="tight",
+            format="png"
+        )
+        fin = Image.open(tmp)
+        fin.save(savepath)
+        fin.close()
     else:
         plt.savefig(
             savepath,
             dpi=600,
-            transparent=True,
+            transparent=transparent,
             bbox_inches="tight"
         )
     return
@@ -76,5 +94,17 @@ def figure(
 
 if __name__ == "__main__":
     figsize = (10, 5)
-    savepath = os.path.join(os.path.curdir, str(Path(__file__).stem) + ".png")
-    figure(figsize=figsize, savepath=savepath)
+    suffix = ".tif"  # ".png"
+    use_sans_serif = False  # True
+    transparent = False  # True
+    font_size = 18
+
+    matplotlib.rcParams["mathtext.fontset"] = "stix"
+    if use_sans_serif:
+        matplotlib.rcParams['font.family'] = "Arial"
+    else:
+        matplotlib.rcParams["font.family"] = "STIXGeneral"
+    matplotlib.rcParams.update({"font.size": font_size})
+
+    savepath = os.path.join(os.path.curdir, str(Path(__file__).stem) + suffix)
+    figure(figsize=figsize, savepath=savepath, transparent=transparent)

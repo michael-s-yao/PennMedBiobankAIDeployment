@@ -11,6 +11,7 @@ Licensed under the MIT License. Copyright 2022 University of Pennsylvania.
 import argparse
 from collections import defaultdict
 import inspect
+from io import BytesIO
 import itertools
 import matplotlib
 import matplotlib.pyplot as plt
@@ -19,6 +20,7 @@ import os
 import pandas as pd
 from pathlib import Path
 import pickle
+from PIL import Image
 from tqdm import tqdm
 from typing import Any, Dict, Optional, Sequence, Union
 
@@ -29,7 +31,7 @@ class PMBBImagingExplorer:
         PACS_data: Union[Path, str],
         cache_dir: Optional[Union[Path, str]] = "./cache",
         font_size: int = 18,
-        use_sans_serif: bool = True
+        use_sans_serif: bool = True,
     ):
         """
         Args:
@@ -114,6 +116,27 @@ class PMBBImagingExplorer:
             "TG", "DX", "MG", "IO", "PX", "GM", "SM", "XC", "ECG", "OP", "OPT"
         ]
 
+    def DICOM_to_Names(self) -> Dict[str, str]:
+        """
+        Returns a dict mapping DICOM modalities to names of imaging modalities.
+        Input:
+            None.
+        Returns:
+            Mapping of DICOM modalities to names of imaging modalities.
+        """
+        dicom_to_names = {X: X for X in self.DICOM_modalities()}
+        dicom_to_names.update({
+            "XR": "X-Ray",
+            "MR": "MRI",
+            "DX": "Digital Radiography",
+            "NM": "Nuclear Medicine",
+            "MG": "Mammography",
+            "XA": "X-Ray Angiography",
+            "RF": "Fluoroscopy",
+            "PT": "PET"
+        })
+        return dicom_to_names
+
     def find_cache(self, name: str) -> Optional[Any]:
         """
         Finds the .pkl file with the specified name within the cache directory.
@@ -158,7 +181,8 @@ class PMBBImagingExplorer:
         max_modalities: int = 10,
         max_repeats: int = 10,
         label: Optional[str] = None,
-        anonymize: bool = False
+        anonymize: bool = False,
+        transparent: bool = False
     ) -> Dict[str, Dict[int, int]]:
         """
         Calculates and plots the number of repeat imaging studies on a per
@@ -172,6 +196,7 @@ class PMBBImagingExplorer:
                 Default 10.
             label: optional label for the plot. Default None.
             anonymize: whether to anonymize the plot axis title. Default False.
+            transparent: whether to save plots with transparent background.
         Returns:
             A dictionary mapping imaging modality to another dictionary mapping
             number of repeats to frequency.
@@ -219,7 +244,7 @@ class PMBBImagingExplorer:
                     counts[1:],
                     cdf[1:] / cdf[1],
                     color=c,
-                    label=mod,
+                    label=self.DICOM_to_Names()[mod],
                     linewidth=3
                 )
             plt.legend(loc="upper right")
@@ -235,11 +260,23 @@ class PMBBImagingExplorer:
                 )
             if savepath is None:
                 plt.show()
+            elif savepath.endswith(".tif") or savepath.endswith(".tiff"):
+                tmp = BytesIO()
+                plt.savefig(
+                    tmp,
+                    dpi=600,
+                    transparent=transparent,
+                    bbox_inches="tight",
+                    format="png"
+                )
+                fin = Image.open(tmp)
+                fin.save(savepath)
+                fin.close()
             else:
                 plt.savefig(
                     savepath,
                     dpi=600,
-                    transparent=True,
+                    transparent=transparent,
                     bbox_inches="tight"
                 )
             plt.close()
@@ -255,7 +292,8 @@ class PMBBImagingExplorer:
         do_plot: bool = True,
         max_modalities: int = -1,
         label: Optional[str] = None,
-        anonymize: bool = False
+        anonymize: bool = False,
+        transparent: bool = False,
     ) -> Dict[str, int]:
         """
         Calculates and plots the total volume of imaging studies stratified
@@ -267,6 +305,7 @@ class PMBBImagingExplorer:
                 If -1, then all modalities are plotted.
             label: optional label for the plot. Default None.
             anonymize: whether to anonymize the plot axis title. Default False.
+            transparent: whether to save plots with transparent background.
         Returns:
             A dictionary mapping imaging modality to volume. Note that if
             `max_modalities` is specified, then the number of returned key-
@@ -295,13 +334,14 @@ class PMBBImagingExplorer:
                 keys = keys[:max_modalities]
             counts = [modality_to_volume[k] / len(self.patients) for k in keys]
             plt.bar(
-                keys,
+                [self.DICOM_to_Names()[k] for k in keys],
                 counts,
                 color=self.colors[:len(keys)],
                 edgecolor="black",
                 linewidth=3
             )
             plt.xlabel("Imaging Study")
+            plt.xticks(rotation=45, ha="right")
             if anonymize:
                 plt.ylabel("Number of Studies per AIBB Capita")
             else:
@@ -326,11 +366,23 @@ class PMBBImagingExplorer:
                 )
             if savepath is None:
                 plt.show()
+            elif savepath.endswith(".tif"):
+                tmp = BytesIO()
+                plt.savefig(
+                    tmp,
+                    dpi=600,
+                    transparent=transparent,
+                    bbox_inches="tight",
+                    format="png"
+                )
+                fin = Image.open(tmp)
+                fin.save(savepath)
+                fin.close()
             else:
                 plt.savefig(
                     savepath,
                     dpi=600,
-                    transparent=True,
+                    transparent=transparent,
                     bbox_inches="tight"
                 )
             plt.close()
@@ -414,7 +466,8 @@ class PMBBImagingExplorer:
         max_modalities: int = 10,
         max_dt: int = 365,
         label: Optional[str] = None,
-        anonymize: bool = False
+        anonymize: bool = False,
+        transparent: bool = False
     ) -> Dict[str, Sequence[int]]:
         """
         Calculates and plots the distribution of delta times between
@@ -428,6 +481,7 @@ class PMBBImagingExplorer:
                 If -1, then the entire range is plotted.
             label: optional label for the plot. Default None.
             anonymize: whether to anonymize the plot axis title. Default False.
+            transparent: whether to save plots with transparent background.
         Returns:
             A dictionary mapping imaging modality to all the delta times (in
             days) between imaging modalities by patient. Note that if
@@ -469,7 +523,7 @@ class PMBBImagingExplorer:
                     bins=100,
                     weights=np.ones_like(dts) / len(dts),
                     range=[0, max_dt % len(dts)],
-                    label=mod,
+                    label=self.DICOM_to_Names()[mod],
                     facecolor=co,
                     edgecolor="black",
                     alpha=0.75,
@@ -491,11 +545,23 @@ class PMBBImagingExplorer:
                 )
             if savepath is None:
                 plt.show()
+            elif savepath.endswith(".tif"):
+                tmp = BytesIO()
+                plt.savefig(
+                    tmp,
+                    dpi=600,
+                    transparent=transparent,
+                    bbox_inches="tight",
+                    format="png"
+                )
+                fin = Image.open(tmp)
+                fin.save(savepath)
+                fin.close()
             else:
                 plt.savefig(
                     savepath,
                     dpi=600,
-                    transparent=True,
+                    transparent=transparent,
                     bbox_inches="tight"
                 )
             plt.close()
@@ -522,7 +588,8 @@ class PMBBImagingExplorer:
         max_year: int = 2015,
         all_modalities: bool = False,
         label: Optional[str] = None,
-        anonymize: bool = False
+        anonymize: bool = False,
+        transparent: bool = False
     ) -> Dict[str, Dict[int, int]]:
         """
         Calculates and plots the number of imaging studies per year by
@@ -541,6 +608,7 @@ class PMBBImagingExplorer:
                 parameter is ignored.
             label: optional label for the plot. Default None.
             anonymize: whether to anonymize the plot axis title. Default False.
+            transparent: whether to save plots with transparent background.
         Returns:
             A dictionary mapping imaging modality to another dictionary
             mapping year to total number of imaging studies of that modality
@@ -569,11 +637,23 @@ class PMBBImagingExplorer:
                     plt.ylabel("Number of Imaging Studies per PMBB Capita")
                 if savepath is None:
                     plt.show()
+                elif savepath.endswith(".tif"):
+                    tmp = BytesIO()
+                    plt.savefig(
+                        tmp,
+                        dpi=600,
+                        transparent=transparent,
+                        bbox_inches="tight",
+                        format="png"
+                    )
+                    fin = Image.open(tmp)
+                    fin.save(savepath)
+                    fin.close()
                 else:
                     plt.savefig(
                         savepath,
                         dpi=600,
-                        transparent=True,
+                        transparent=transparent,
                         bbox_inches="tight"
                     )
                 plt.close()
@@ -626,7 +706,13 @@ class PMBBImagingExplorer:
                 if max_year >= min_year:
                     years = [y for y in years if y <= max_year]
                 enrollment = [year_to_volume[y] / 1_000 for y in years]
-                plt.plot(years, enrollment, label=mod, color=co, linewidth=3)
+                plt.plot(
+                    years,
+                    enrollment,
+                    label=self.DICOM_to_Names()[mod],
+                    color=co,
+                    linewidth=3
+                )
             plt.xlabel("Year")
             plt.xticks(np.arange(start=min_year, stop=(max_year + 1), step=5))
             plt.ylabel("Thousands of Imaging Studies")
@@ -641,11 +727,23 @@ class PMBBImagingExplorer:
                 )
             if savepath is None:
                 plt.show()
+            elif savepath.endswith(".tif"):
+                tmp = BytesIO()
+                plt.savefig(
+                    tmp,
+                    dpi=600,
+                    transparent=transparent,
+                    bbox_inches="tight",
+                    format="png"
+                )
+                fin = Image.open(tmp)
+                fin.save(savepath)
+                fin.close()
             else:
                 plt.savefig(
                     savepath,
                     dpi=600,
-                    transparent=True,
+                    transparent=transparent,
                     bbox_inches="tight"
                 )
             plt.close()
@@ -700,6 +798,16 @@ def build_args() -> argparse.Namespace:
         action="store_true",
         help="Whether to use Sans Serif font for plotting. Default False."
     )
+    parser.add_argument(
+        "--save_tif",
+        action="store_true",
+        help="Saves figures as tif files instead of png files. Default False."
+    )
+    parser.add_argument(
+        "--transparent",
+        action="store_true",
+        help="Saves transparent figures. Default False."
+    )
 
     return parser.parse_args()
 
@@ -718,34 +826,39 @@ def main():
 
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
+    suffix = ".tif" if args.save_tif else ".png"
     explorer.volume_by_modality(
-        savepath=os.path.join(args.output_dir, "volume_by_modality.png"),
+        savepath=os.path.join(args.output_dir, "fig1a" + suffix),
         max_modalities=10,
         label=("(a)" if args.add_sublabels else None),
-        anonymize=args.anonymize
+        anonymize=args.anonymize,
+        transparent=args.transparent
     )
     explorer.imaging_by_year(
-        savepath=os.path.join(args.output_dir, "imaging_by_year.png"),
+        savepath=os.path.join(args.output_dir, "fig1b" + suffix),
         max_modalities=10,
         label=("(b)" if args.add_sublabels else None),
-        anonymize=args.anonymize
+        anonymize=args.anonymize,
+        transparent=args.transparent
     )
     explorer.repeat_studies_by_modality(
         savepath=os.path.join(
-            args.output_dir, "repeat_studies_by_modality.png"
+            args.output_dir, "fig1c" + suffix
         ),
         max_modalities=10,
         label=("(c)" if args.add_sublabels else None),
-        anonymize=args.anonymize
+        anonymize=args.anonymize,
+        transparent=args.transparent
     )
     explorer.delta_time_dist_by_modality(
         savepath=os.path.join(
-            args.output_dir, "delta_time_dist_by_modality.png"
+            args.output_dir, "fig1d" + suffix
         ),
         max_modalities=4,
         max_dt=1000,
         label=("(d)" if args.add_sublabels else None),
-        anonymize=args.anonymize
+        anonymize=args.anonymize,
+        transparent=args.transparent
     )
 
 

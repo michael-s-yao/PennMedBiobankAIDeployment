@@ -8,12 +8,14 @@ Author(s):
 Licensed under the MIT License. Copyright 2022 University of Pennsylvania.
 """
 import argparse
+from io import BytesIO
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
 from pathlib import Path
+from PIL import Image
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -26,13 +28,21 @@ class IDPExplorer:
         self,
         idp_datapaths: Sequence[Union[Path, str]],
         icd_datapath: Union[Path, str],
-        seed: Optional[int] = 42
+        seed: Optional[int] = 42,
+        font_size: int = 20,
+        use_sans_serif: bool = False,
+        save_tif: bool = False,
+        transparent: bool = False
     ):
         """
         Args:
             idp_datapaths: filepaths to CSV files with PMBB IDP data.
             icd_datapath: filepath to file with PMBB ICD-9 code data.
             seed: optional random seed. Default 42.
+            font_size: font size for plotting. Default 20.
+            use_sans_serif: whether to use Sans Serif font. Default False.
+            save_tif: whether to save tif files instead of png. Default False.
+            transparent: whether to save transparent figures. Default False.
         """
         self.idp_datapaths = idp_datapaths
         self.icd_datapath = icd_datapath
@@ -74,6 +84,11 @@ class IDPExplorer:
         }
         self.seed = seed
         self.rng = np.random.RandomState(seed)
+        self.transparent = transparent
+        self.font_size = font_size
+        self.use_sans_serif = use_sans_serif
+        self.transparent = transparent
+        self.save_tif = save_tif
         self.plot_config()
         self.data, self.labels = self.fimport()
 
@@ -265,12 +280,29 @@ class IDPExplorer:
                 label += 1
             if savedir is None or len(savedir) == 0:
                 plt.show()
+            elif self.save_tif:
+                tmp = BytesIO()
+                plt.savefig(
+                    tmp,
+                    dpi=600,
+                    transparent=self.transparent,
+                    bbox_inches="tight",
+                    format="png"
+                )
+                fin = Image.open(tmp)
+                fin.save(
+                    os.path.join(
+                        savedir, diagnosis.lower().replace(" ", "_") + ".tif"
+                    ),
+
+                )
+                fin.close()
             else:
                 plt.savefig(
                     os.path.join(
                         savedir, diagnosis.lower().replace(" ", "_") + ".png"
                     ),
-                    transparent=True,
+                    transparent=self.transparent,
                     dpi=600,
                     bbox_inches="tight"
                 )
@@ -285,8 +317,11 @@ class IDPExplorer:
             None.
         """
         matplotlib.rcParams["mathtext.fontset"] = "stix"
-        matplotlib.rcParams['font.family'] = "Arial"
-        matplotlib.rcParams.update({"font.size": 20})
+        if self.use_sans_serif:
+            matplotlib.rcParams['font.family'] = "Arial"
+        else:
+            matplotlib.rcParams["font.family"] = "STIXGeneral"
+        matplotlib.rcParams.update({"font.size": self.font_size})
         self.colors = [
             "#55752F",
             "#E37E00",
@@ -313,15 +348,13 @@ class IDPExplorer:
         Returns:
             Formatted p value string.
         """
-        if p >= 0.01:
-            return fr"$p = {p:.3f}$"
         if p > 1 or p <= 0:
             raise ValueError("p values should be between 0 and 1, got {p}.")
-        decimal_power = 0
-        while p < 1:
-            p = p * 10
-            decimal_power -= 1
-        return fr"$p = {p:.3f} \times 10^{{{decimal_power}}}$"
+        if p < 0.001:
+            return r"$p < 0.001$"
+        elif p < 0.01 or 0.04 < p < 0.05:
+            return fr"$p = {p:.3f}$"
+        return fr"$p = {p:.2f}$"
 
 
 def build_args() -> argparse.Namespace:
@@ -378,6 +411,27 @@ def build_args() -> argparse.Namespace:
         default=42,
         help="Optional random seed. Default 42."
     )
+    parser.add_argument(
+        "--font_size",
+        type=int,
+        default=20,
+        help="Font size for plotting. Default 20."
+    )
+    parser.add_argument(
+        "--use_sans_serif",
+        action="store_true",
+        help="Whether to use Sans Serif font for plotting. Default False."
+    )
+    parser.add_argument(
+        "--save_tif",
+        action="store_true",
+        help="Saves figures as tif files instead of png files. Default False."
+    )
+    parser.add_argument(
+        "--transparent",
+        action="store_true",
+        help="Saves transparent figures. Default False."
+    )
 
     return parser.parse_args()
 
@@ -387,7 +441,11 @@ def main():
     explorer = IDPExplorer(
         idp_datapaths=args.idp_datapaths,
         icd_datapath=args.icd_datapath,
-        seed=args.seed
+        seed=args.seed,
+        font_size=args.font_size,
+        use_sans_serif=args.use_sans_serif,
+        save_tif=args.save_tif,
+        transparent=args.transparent
     )
     if args.savedir is not None and len(args.savedir) > 0:
         if not os.path.isdir(args.savedir):
